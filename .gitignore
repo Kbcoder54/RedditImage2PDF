@@ -1,1 +1,3 @@
-data.txt
+*.txt
+images
+*.pdf
