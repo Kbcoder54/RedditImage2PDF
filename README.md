@@ -1,5 +1,5 @@
 # RedditImage2PDF
-Python Script to convert Reddit images to a PDF
+This script converts the images of a reddit post to a PDF.
 
 ## Create a reddit account!
 - Signup for a reddit account.
