@@ -32,55 +32,61 @@ def create_auth():
     return (credentials,login)
 
 
-cred,_ = create_auth()
+if __name__ == '__main__':
+    cred,_ = create_auth()
+    reddit = praw.Reddit(
+        client_id= cred['client-id'],
+        client_secret= cred['client_secret'],
+        user_agent= cred['user_agent'],
+        #A user agent header is a string of text that is sent with HTTP requests to 
+        #identify the program making the request (the program is called a "user agent")
+    )
+    reddit.read_only = True
 
-reddit = praw.Reddit(
-    client_id= cred['client-id'],
-    client_secret= cred['client_secret'],
-    user_agent= cred['user_agent'],
-    #A user agent header is a string of text that is sent with HTTP requests to 
-    #identify the program making the request (the program is called a "user agent")
-)
-reddit.read_only = True
-
-post_if_exists = False
-
-while post_if_exists == False:
-    gallery_url = input("Enter Reddit URL:")
-    post = reddit.submission(url = gallery_url)
-    if post.removed_by_category is None:
-        post_if_exists = True
+    post_if_exists = False
+    while post_if_exists == False:
+        try:
+            gallery_url = input("Enter Reddit URL:")
+            response = requests.head(gallery_url, allow_redirects=True)
+            if response.status_code == 200:
+                post = reddit.submission(url = gallery_url)
+                post_if_exists = True
+            else:
+                post_if_exists = False
+        except requests.RequestException as e:
+            post_if_exists = False
 
 
-image_urls = []
-for item in sorted(post.gallery_data['items'], key=lambda x: x['id']):
-    media_id = item['media_id']
-    meta = post.media_metadata[media_id]
-    if meta['e'] == 'Image':
-        source = meta['s']
-        image_urls.append(source['u'].replace('preview','i'))
+    image_urls = []
+    for item in sorted(post.gallery_data['items'], key=lambda x: x['id']):
+        media_id = item['media_id']
+        meta = post.media_metadata[media_id]
+        if meta['e'] == 'Image':
+            source = meta['s']
+            image_urls.append(source['u'].replace('preview','i'))
 
-foldername = 'images'
-filename = 'image'
-i = 0
-os.makedirs(foldername,exist_ok=True)
-for link in image_urls:
-    res = requests.get(link).content
-    # Save the image
-    file = os.path.join(foldername, f"{filename}{i}.jpg")
-    with open(file, "wb") as f:
-        f.write(res)
-    i += 1
-print("Done")
+    foldername = 'images'
+    filename = 'image'
+    i = 0
+    os.makedirs(foldername,exist_ok=True)
+    for link in image_urls:
+        res = requests.get(link).content
+        # Save the image
+        file = os.path.join(foldername, f"{filename}{i}.jpg")
+        with open(file, "wb") as f:
+            f.write(res)
+        i += 1
+    print("Done")
 
-images = [
-    Image.open("images/" + f)
-    for f in [f"image{x}.jpg" for x in range(i)]
-]
+    images = [
+        Image.open("images/" + f)
+        for f in [f"image{x}.jpg" for x in range(i)]
+    ]
 
-pdf_path = f"{post.title}.pdf"
+    pdf_path = f"{post.title}.pdf"
+        
+    images[0].save(
+        pdf_path, "PDF" ,resolution=100.0, save_all=True, append_images=images[1:]
+    )
+    shutil.rmtree(foldername, ignore_errors=True)
     
-images[0].save(
-    pdf_path, "PDF" ,resolution=100.0, save_all=True, append_images=images[1:]
-)
-shutil.rmtree(foldername, ignore_errors=True)
